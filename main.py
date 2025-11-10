@@ -11,6 +11,16 @@ class TodoItem(BaseModel):
     description: Optional[str] = None
     completed: bool = False
 
+class TodoItemCreateSchema(BaseModel):
+    title: str
+    description: Optional[str] = None
+
+class TodoItemUpdateScheme(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    completed: Optional[bool] = None
+
+
 todos = [
     TodoItem(id=1, title="牛乳とパンを買う", description="牛乳は低温殺菌じゃないとだめ", completed=False),
     TodoItem(id=2, title="Pythonの勉強", description="30分勉強する", completed=True),
@@ -43,3 +53,41 @@ def get_todo(todo_id: int):
         if todo.id == todo_id:
             return todo
     raise HTTPException(status_code=404, detail="TODOが見つからない")
+
+
+
+
+@app.post("/todos", response_model=TodoItem)
+def create_todo(req: TodoItemCreateSchema):
+    new_id = max([todo.id for todo in todos], default=0) + 1
+    new_todo = TodoItem(id=new_id, title=req.title, description=req.description, completed=False)
+    todos.append(new_todo)
+
+    return new_todo
+
+
+@app.delete("/todos/{todo_id}")
+def delete_todo(todo_id: int):
+    for i, todo in enumerate(todos):
+        if todo.id == todo_id:
+            deleted_todo = todos.pop(i)
+            return {"message": f"TODO '{deleted_todo.description}' を削除しました"}
+    
+    raise HTTPException(status_code=404, detail=f"ID {todo_id} のTODOが見つかりません")
+
+
+@app.put("/todos/{todo_id}", response_model=TodoItem)
+def update_todo(todo_id: int, req: TodoItemUpdateScheme):
+    for i, todo in enumerate(todos):
+        if todo.id == todo_id:
+            todos[i] = TodoItem(
+                id=todo_id,
+                title=req.title if req.title is not None else todo.title,
+                description=req.description if req.description is not None else todo.description,
+                completed=req.completed if req.completed is not None else todo.completed
+            )
+            return todos[i]
+
+    raise HTTPException(status_code=404, detail=f"ID {todo_id} のTODOが見つかりません")
+
+    
