@@ -24,8 +24,7 @@ register_tortoise(
 )
 
 
-
-class TodoItem(BaseModel):
+class TodoItemSchema(BaseModel):
     id: int
     title: str
     description: Optional[str] = None
@@ -39,6 +38,7 @@ class TodoItemUpdateScheme(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     completed: Optional[bool] = None
+
 
 
 @app.get("/")
@@ -81,17 +81,13 @@ async def delete_todo(todo_id: int):
 
 
 @app.put("/todos/{todo_id}", response_model=TodoItem_Pydantic)
-def update_todo(todo_id: int, req: TodoItemUpdate_Pydantic):
-    for i, todo in enumerate(todos):
-        if todo.id == todo_id:
-            todos[i] = TodoItem_Pydantic(
-                id=todo_id,
-                title=req.title if req.title is not None else todo.title,
-                description=req.description if req.description is not None else todo.description,
-                completed=req.completed if req.completed is not None else todo.completed
-            )
-            return todos[i]
+async def update_todo(todo_id: int, req: TodoItemUpdate_Pydantic):
+    todo = await TodoItem.get(id=todo_id)
+    if not todo:
+        raise HTTPException(status_code=404, detail=f"ID {todo_id} のTODOが見つかりません")
 
-    raise HTTPException(status_code=404, detail=f"ID {todo_id} のTODOが見つかりません")
-
-    
+    todo.title = req.title if req.title is not None else todo.title
+    todo.description = req.description if req.description is not None else todo.description
+    todo.completed = req.completed if req.completed is not None else todo.completed
+    await todo.save()
+    return todo
